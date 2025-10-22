@@ -4,6 +4,7 @@ public record Song(
         String name,
         String author,
         Integer length,
-        String description
+        String description,
+        String link
 ) {
 }
