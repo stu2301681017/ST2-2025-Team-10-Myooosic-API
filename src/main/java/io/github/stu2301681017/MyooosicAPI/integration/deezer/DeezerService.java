@@ -3,6 +3,7 @@ package io.github.stu2301681017.MyooosicAPI.integration.deezer;
 import api.deezer.DeezerApi;
 import api.deezer.exceptions.DeezerException;
 import api.deezer.objects.Track;
+import io.github.stu2301681017.MyooosicAPI.AppProperties;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongService;
 import io.github.stu2301681017.MyooosicAPI.core.ServiceResponseException;
 import io.github.stu2301681017.MyooosicAPI.core.Song;
@@ -12,16 +13,15 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-@ConditionalOnProperty(name = "myooosic.song.server", havingValue = "deezer")
+@ConditionalOnProperty(name = "myooosic.songServer", havingValue = "deezer")
 @Service
 public class DeezerService implements SongService {
 
     private DeezerApi deezerApi;
 
     public DeezerService(
-            DeezerApi deezerApi
     ) {
-        this.deezerApi = deezerApi;
+        this.deezerApi = new DeezerApi();
     }
 
     public Song getSongFromIdentifier(@NotNull @Valid SongIdentifier identifier) {

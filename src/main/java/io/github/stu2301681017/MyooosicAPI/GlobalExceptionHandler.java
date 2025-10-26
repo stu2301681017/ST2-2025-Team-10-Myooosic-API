@@ -1,10 +1,8 @@
 package io.github.stu2301681017.MyooosicAPI;
 
-import io.github.stu2301681017.MyooosicAPI.core.ApiConstraints;
-import io.github.stu2301681017.MyooosicAPI.core.ApiResponse;
+import io.github.stu2301681017.MyooosicAPI.app.ai.AIUnavailableException;
+import io.github.stu2301681017.MyooosicAPI.core.*;
 import io.github.stu2301681017.MyooosicAPI.app.ai.AIResponseException;
-import io.github.stu2301681017.MyooosicAPI.core.ServerConstraintViolationException;
-import io.github.stu2301681017.MyooosicAPI.core.UserConstraintViolationException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -54,8 +52,18 @@ public class GlobalExceptionHandler {
             return createExceptionResponse(HttpStatus.BAD_REQUEST, "Invalid parameters: " + message);
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleServiceUnavailableException(ServiceUnavailableException ex) {
+        return createExceptionResponse(HttpStatus.NOT_FOUND, "Service unavailable");
+    }
+
+    @ExceptionHandler(AIUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAIUnavailableException(AIUnavailableException ex) {
+        return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "AI service unavailable");
+    }
+
     @ExceptionHandler(AIResponseException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadAIResponseException(AIResponseException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleAIResponseException(AIResponseException ex) {
         return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Bad AI response");
     }
 

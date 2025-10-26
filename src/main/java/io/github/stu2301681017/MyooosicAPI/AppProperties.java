@@ -1,6 +1,6 @@
 package io.github.stu2301681017.MyooosicAPI;
 
-import io.github.stu2301681017.MyooosicAPI.core.SongServiceImpl;
+import io.github.stu2301681017.MyooosicAPI.core.SongServer;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,8 +15,8 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "myooosic")
 public class AppProperties {
 
-    @NotNull(message = "myooosic.song.service.impl must be set")
-    private SongServiceImpl songServiceImpl;
+    @NotNull()
+    private SongServer songServer;
 
 
 }

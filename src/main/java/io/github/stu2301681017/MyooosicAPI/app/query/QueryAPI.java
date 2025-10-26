@@ -22,7 +22,7 @@ public class QueryAPI {
         this.queryService = queryService;
     }
 
-    @GetMapping("/query/{query}")
+    @GetMapping("/query/{prompt}")
     public ApiResponse<Collection<Suggestion>> query(@PathVariable @Valid QueryPrompt prompt) {
         return new ApiResponse<>(
                 queryService.getSongSuggestionsForPrompt(prompt, 9),
