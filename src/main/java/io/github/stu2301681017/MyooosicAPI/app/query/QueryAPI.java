@@ -1,9 +1,11 @@
-package io.github.stu2301681017.MyooosicAPI.api.query;
-import io.github.stu2301681017.MyooosicAPI.ai.Prompt;
+package io.github.stu2301681017.MyooosicAPI.app.query;
+import io.github.stu2301681017.MyooosicAPI.core.ApiConstraints;
 import io.github.stu2301681017.MyooosicAPI.core.ApiResponse;
 import io.github.stu2301681017.MyooosicAPI.core.Suggestion;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
@@ -11,6 +13,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
+@Validated({ApiConstraints.class})
 public class QueryAPI {
 
     private final QueryService queryService;
@@ -19,17 +22,17 @@ public class QueryAPI {
         this.queryService = queryService;
     }
 
-    @PostMapping("/query")
-    public ApiResponse<Collection<Suggestion>> query(@Valid @RequestBody QueryPrompt query) {
+    @GetMapping("/query/{query}")
+    public ApiResponse<Collection<Suggestion>> query(@PathVariable @Valid QueryPrompt prompt) {
         return new ApiResponse<>(
-                queryService.getSongSuggestionsForPrompt(new Prompt(query.text()), 9),
+                queryService.getSongSuggestionsForPrompt(prompt, 9),
                 HttpStatus.OK,
                 "Successfully found 9 song suggestions");
     }
 
-    @PostMapping("/query/single")
-    public ApiResponse<Suggestion> querySingle(@Valid @RequestBody QueryPrompt query) {
-        Optional<Suggestion> first = queryService.getSongSuggestionsForPrompt(new Prompt(query.text()), 1).stream().findFirst();
+    @GetMapping("/query/single/{query}")
+    public ApiResponse<Suggestion> querySingle(@Valid @PathVariable QueryPrompt prompt) {
+        Optional<Suggestion> first = queryService.getSongSuggestionsForPrompt(prompt, 1).stream().findFirst();
         return new ApiResponse<>(
                 first.orElse(null),
                 HttpStatus.OK,
