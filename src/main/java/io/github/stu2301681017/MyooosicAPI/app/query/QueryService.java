@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,14 +42,19 @@ public class QueryService {
     public Collection<Suggestion> getSongSuggestionsForPrompt(@Valid @NotNull QueryPrompt prompt, @Positive int amount) {
         QuerySuggestion[] answer;
         try {
-            answer = ChatClient.create(model)
-                    .prompt()
-                    .user(u -> u
-                            .text("Find me {amount} songs (that can be found on deezer) that fit the following keywords, and add a short (128 chars or less) reason why it fits: {keywords}")
-                            .param("keywords", prompt.query())
-                            .param("amount", amount))
-                    .call()
-                    .entity(QuerySuggestion[].class);
+            answer = Objects.requireNonNull(ChatClient.create(model)
+                .prompt()
+                .user(u -> u
+                        .text("""
+                                Find me {amount} songs (that can be found on deezer) that fit the
+                                following keywords, and add a short (128 chars or less) reason why
+                                it fits: {keywords}
+                                """)
+                        .param("keywords", prompt.query())
+                        .param("amount", amount))
+                .call()
+                .entity(QuerySuggestionAnswer.class))
+                .items();
 
             validator.validate(answer);
 

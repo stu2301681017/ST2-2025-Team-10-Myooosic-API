@@ -30,7 +30,7 @@ public class QueryAPI {
                 "Successfully found 9 song suggestions");
     }
 
-    @GetMapping("/query/single/{query}")
+    @GetMapping("/query/single/{prompt}")
     public ApiResponse<Suggestion> querySingle(@Valid @PathVariable QueryPrompt prompt) {
         Optional<Suggestion> first = queryService.getSongSuggestionsForPrompt(prompt, 1).stream().findFirst();
         return new ApiResponse<>(

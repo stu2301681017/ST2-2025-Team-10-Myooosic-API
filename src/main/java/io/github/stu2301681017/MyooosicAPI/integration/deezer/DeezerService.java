@@ -29,7 +29,7 @@ public class DeezerService implements SongService {
         try {
             track = deezerApi
                     .search()
-                    .searchTrack(identifier.name() + " " + identifier.author())
+                    .searchTrack(identifier.name() + "," + identifier.author())
                     .execute()
                     .getData()
                     .stream().findFirst()
