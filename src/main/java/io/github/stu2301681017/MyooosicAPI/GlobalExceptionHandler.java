@@ -54,12 +54,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ServiceUnavailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleServiceUnavailableException(ServiceUnavailableException ex) {
-        return createExceptionResponse(HttpStatus.NOT_FOUND, "Service unavailable");
+        return createExceptionResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service unavailable");
     }
 
     @ExceptionHandler(AIUnavailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleAIUnavailableException(AIUnavailableException ex) {
-        return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "AI service unavailable");
+        return createExceptionResponse(HttpStatus.SERVICE_UNAVAILABLE, "AI service unavailable");
     }
 
     @ExceptionHandler(AIResponseException.class)
