@@ -5,6 +5,8 @@ import io.github.stu2301681017.MyooosicAPI.core.*;
 import io.github.stu2301681017.MyooosicAPI.app.ai.AIResponseException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +17,8 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    Logger logger = LoggerFactory.getLogger(getClass());
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericRuntimeException(RuntimeException ex) {
@@ -64,6 +68,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AIResponseException.class)
     public ResponseEntity<ApiResponse<Void>> handleAIResponseException(AIResponseException ex) {
+        logger.error("Error:", ex);
         return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Bad AI response");
     }
 

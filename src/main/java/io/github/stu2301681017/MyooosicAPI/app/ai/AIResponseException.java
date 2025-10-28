@@ -6,4 +6,8 @@ public class AIResponseException extends ServiceResponseException {
     public AIResponseException(String message, Throwable cause) {
         super(message, cause);
     }
+    public AIResponseException(String message) {
+        super(message);
+    }
+
 }

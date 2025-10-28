@@ -1,43 +1,64 @@
 package io.github.stu2301681017.MyooosicAPI.integration.deezer;
 
-import api.deezer.DeezerApi;
-import api.deezer.exceptions.DeezerException;
-import api.deezer.objects.Track;
-import io.github.stu2301681017.MyooosicAPI.AppProperties;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongService;
 import io.github.stu2301681017.MyooosicAPI.core.ServiceResponseException;
 import io.github.stu2301681017.MyooosicAPI.core.Song;
 import io.github.stu2301681017.MyooosicAPI.core.SongIdentifier;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Collection;
+import java.util.Map;
 
 @ConditionalOnProperty(name = "myooosic.songServer", havingValue = "deezer")
 @Service
 public class DeezerService implements SongService {
 
-    private DeezerApi deezerApi;
+    private final WebClient webClient;
 
     public DeezerService(
     ) {
-        this.deezerApi = new DeezerApi();
+        this.webClient = WebClient
+                .builder()
+                .baseUrl("https://api.deezer.com/")
+                .build();
     }
 
-    public Song getSongFromIdentifier(@NotNull @Valid SongIdentifier identifier) {
-        Track track;
+    public Collection<Song> getSongsFromString(@NotNull @Valid @NotBlank @Size(max = 1024) String search) {
         try {
-            track = deezerApi
-                    .search()
-                    .searchTrack(identifier.name() + "," + identifier.author())
-                    .execute()
-                    .getData()
-                    .stream().findFirst()
-                    .orElse(null);
-        } catch (DeezerException e) {
-            throw new ServiceResponseException("Deezer service returned error", e);
+            DeezerResponse response = webClient
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/search")
+                            .queryParam("q", search)
+                            .build()
+                    )
+                    .retrieve()
+                    .bodyToMono(DeezerResponse.class)
+                    .block();
+
+            return response.data()
+                    .stream()
+                    .map(track -> new Song(
+                            new SongIdentifier(track.title(), track.artist().name()),
+                            Integer.valueOf(track.duration()),
+                            track.link(),
+                            track.preview()
+                    ))
+                    .toList();
+
+        } catch (RuntimeException e) {
+            throw new ServiceResponseException("Deezer returned bad response", e);
         }
-        return new Song(identifier, track.getDuration(), track.getLink(), track.getPreview());
+    }
+
+    public Collection<Song> getSongsFromIdentifier(@NotNull @Valid SongIdentifier identifier) {
+        return getSongsFromString(identifier.name() + ", by " + identifier.author());
     }
 
 }
