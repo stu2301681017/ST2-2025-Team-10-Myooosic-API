@@ -12,9 +12,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.DefaultChatClientBuilder;
+import org.springframework.ai.chat.client.advisor.ChatModelCallAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -25,16 +29,22 @@ import java.util.stream.Collectors;
 @Service
 public class QueryService {
 
-    private final ChatModel model;
+    private final ChatClient chat;
     private final SongService songService;
     private final Validator validator;
 
     public QueryService(
+            ChatClient.Builder chatBuilder,
             ChatModel model,
             SongService songService,
             Validator validator
     ) {
-        this.model = model;
+        this.chat = chatBuilder.defaultAdvisors(
+                ChatModelCallAdvisor
+                        .builder()
+                        .chatModel(model)
+                        .build()
+        ).build();
         this.songService = songService;
         this.validator = validator;
     }
@@ -42,19 +52,28 @@ public class QueryService {
     public Collection<Suggestion> getSongSuggestionsForPrompt(@Valid @NotNull QueryPrompt prompt, @Positive int amount) {
         QuerySuggestion[] answer;
         try {
-            answer = Objects.requireNonNull(ChatClient.create(model)
+            ChatClient.CallResponseSpec spec = chat
                 .prompt()
                 .user(u -> u
                         .text("""
-                                Find me {amount} songs (that can be found on deezer) that fit the
-                                following keywords, and add a short (128 chars or less) reason why
-                                it fits: {keywords}
-                                """)
+                          Find {amount} songs (that can be found on Deezer) that fit
+                          the following keywords and a small (<=128 characters) reason why.
+                          Be varied and do not ever repeat the same song twice, shuffle heavily.
+                          Return as JSON in the following schema:
+                          A single property "items" which contains an array of objects
+                          that each have a property "identifier", which has two strings "name" and "author";
+                          and a property "reason".
+                          Keywords:
+                          {keywords}
+                        """)
+
                         .param("keywords", prompt.query())
                         .param("amount", amount))
-                .call()
-                .entity(QuerySuggestionAnswer.class))
-                .items();
+                .call();
+
+            answer = Objects.requireNonNull(spec.entity(new ParameterizedTypeReference<QuerySuggestionAnswer>() {})).items();
+
+            System.out.println(spec.content());
 
             validator.validate(answer);
 

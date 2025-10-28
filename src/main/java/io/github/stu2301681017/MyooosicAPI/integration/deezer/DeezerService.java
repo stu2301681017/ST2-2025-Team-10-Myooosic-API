@@ -37,7 +37,7 @@ public class DeezerService implements SongService {
         } catch (DeezerException e) {
             throw new ServiceResponseException("Deezer service returned error", e);
         }
-        return new Song(identifier, track.getDuration(), track.getShare(), track.getPreview());
+        return new Song(identifier, track.getDuration(), track.getLink(), track.getPreview());
     }
 
 }
