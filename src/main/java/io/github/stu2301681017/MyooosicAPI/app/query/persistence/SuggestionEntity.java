@@ -10,7 +10,10 @@ import lombok.Setter;
 @Entity
 public class SuggestionEntity {
 
-    @EmbeddedId
+    @GeneratedValue
+    @Id
+    private Integer id;
+
     private SongIdentifier songId;
 
     @Column(length = 128)
