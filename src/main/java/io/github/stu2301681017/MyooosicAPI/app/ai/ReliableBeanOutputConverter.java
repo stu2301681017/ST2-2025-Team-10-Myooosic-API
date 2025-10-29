@@ -6,6 +6,10 @@ import org.springframework.ai.converter.StructuredOutputConverter;
 
 public class ReliableBeanOutputConverter<T> implements StructuredOutputConverter<T> {
 
+    /**
+     * This right here is the EXACT reason why working with AI, specifically a
+     * locally hosted one, is nothing short of absolute cancer. Please, do not.
+     */
     private final String command = """
     You are a strict JSON generator. You MUST follow these rules:
     

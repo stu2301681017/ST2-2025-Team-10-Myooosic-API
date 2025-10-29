@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ChatModelCallAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -18,8 +19,10 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,72 +31,114 @@ public class QueryService {
     private final ChatClient chat;
     private final SongService songService;
     private final Validator validator;
-    private final SongTools songTools;
-    private final WebTools webTools;
+    private final Logger logger;
 
     public QueryService(
             ChatClient.Builder chatBuilder,
             ChatModel model,
             SongService songService,
-            Validator validator,
-            ChatMemory memory,
-            SongTools songTools,
-            WebTools webTools
+            Validator validator
     ) {
         this.chat = chatBuilder
             .defaultAdvisors(
                 ChatModelCallAdvisor
                         .builder()
                         .chatModel(model)
-                        .build(),
-                MessageChatMemoryAdvisor
-                        .builder(memory)
                         .build()
             )
             .build();
         this.songService = songService;
         this.validator = validator;
-        this.songTools = songTools;
-        this.webTools = webTools;
+        this.logger = Logger.getGlobal();
     }
 
-    public Collection<Suggestion> getSongSuggestionsForPrompt(@Valid @NotNull QueryPrompt prompt, @Positive int amount) {
-        QuerySuggestionAnswer answer;
-        try {
-            ChatClient.CallResponseSpec spec = chat
-                .prompt()
-                .tools(songTools)
-                .user(u -> u
-                    .text("""
-                      Find {amount} songs using your tools that fit
-                      the following keywords and a small (<=128 characters) reason why.
-                      Be varied and do not ever repeat the same song twice, shuffle heavily.
-                      !!!MOST IMPORTANT:!!!
-                      Although you should use all tools, please verify if a given song exists with the Song Service
-                      with the given song name and author before listing it.
-                      If it doesn't, discard it, try again.
-                      DO NOT EVER INVENT SONGS, USE YOUR TOOLS TO VERIFY THEM!!!!!!!!!!
-                      Keywords:
-                      {keywords}
-                    """)
-                    .param("keywords", prompt.query())
-                    .param("amount", amount))
-                .call();
+    public Collection<Suggestion> getSongSuggestionsForPrompt(@Valid @NotNull QueryPrompt prompt, @Positive int amount, List<SongIdentifier> avoid) {
 
-            answer = spec.entity(new ReliableBeanOutputConverter<>(QuerySuggestionAnswer.class,
-                    new QuerySuggestionAnswer(
-                            List.of(
-                                    new QuerySuggestion(
-                                            new SongIdentifier("songname", "authorname"),
-                                            "Reason why it fits the keywords"
-                                    )
+        List<Suggestion> suggestions = new ArrayList<>();
+        List<SongIdentifier> avoidAndAlreadyTaken = new ArrayList<>(avoid);
+
+        for (int i = 0; i < amount; i++) {
+            Suggestion suggestion = suggest(prompt, avoidAndAlreadyTaken, 0);
+            if (suggestion != null) {
+                avoidAndAlreadyTaken.add(suggestion.song().id());
+            }
+            suggestions.add(suggestion);
+        }
+
+        return suggestions;
+    }
+
+    private Suggestion suggest(@Valid @NotNull QueryPrompt prompt, List<SongIdentifier> avoid, @PositiveOrZero int tries) {
+
+        String failedSuggestionsAsString = avoid
+                .stream()
+                .map(avoidSong -> avoidSong.name() + ", by " + avoidSong.author())
+                .collect(Collectors.joining("; "));
+        Logger.getGlobal().info("Trying a new suggestion for prompt '" + prompt.query() + "'. Try " + tries + ". Avoiding suggestions: " + failedSuggestionsAsString);
+
+        QuerySuggestion suggestionAttempt = suggestionRun(prompt, avoid);
+        try {
+            Song suggestedSong = tryGetSongFromSuggestion(suggestionAttempt);
+            Logger.getGlobal().info("Found a song with name " + suggestionAttempt.identifier().name() + " by author " + suggestionAttempt.identifier().author() + ", returning.");
+            return new Suggestion(suggestedSong, prompt, suggestionAttempt.reason());
+        } catch (AIHallucinationException e) {
+            Logger.getGlobal().info("Could not find a song with name " + suggestionAttempt.identifier().name() + " by author " + suggestionAttempt.identifier().author() + ".");
+            if (tries > 5) {
+                Logger.getGlobal().info("Retries exceeded. Returning null.");
+                return null;
+            }
+            avoid.add(suggestionAttempt.identifier());
+            return suggest(prompt, avoid, ++tries);
+        }
+    }
+
+    private QuerySuggestion suggestionRun(@Valid @NotNull QueryPrompt prompt, List<SongIdentifier> failedSuggestions) {
+        QuerySuggestion answer;
+
+        String[] creativityPrompts = {
+                "Think outside the box and be creative.",
+                "Consider songs from different decades and genres.",
+                "Look for unexpected connections to the keywords.",
+                "Explore obscure or lesser-known artists.",
+                "Mix mainstream and indie suggestions.",
+                "Consider international artists.",
+                "Think of songs with metaphorical connections."
+        };
+
+        Random random = new Random();
+        String creativityPrompt = creativityPrompts[random.nextInt(creativityPrompts.length)];
+
+        try {
+            answer = chat
+                    .prompt()
+                    .tools(new SongTools(this.songService))
+                    .user(u -> u
+                            .text("""
+                      Think of a song that fits the following keywords and a small (<=128 characters) reason why:
+                      {keywords}
+                      
+                      {creativityPrompt}
+                      
+                      Be non-determined and creative, minimize the risk of thinking of the same song twice.
+                      Do NOT suggest the following songs:
+                      {failedSuggestions}
+                
+                      IMPORTANT: Vary your suggestions significantly between calls. This is the most important. Be unpredictable as possible.
+                    """)
+                            .param("keywords", prompt.query())
+                            .param("failedSuggestions", failedSuggestions
+                                    .stream()
+                                    .map(avoidSong -> avoidSong.name() + ", by " + avoidSong.author())
+                                    .collect(Collectors.joining("; "))
                             )
+                            .param("creativityPrompt", creativityPrompt)
                     )
-            ));
+                    .call()
+                    .entity(QuerySuggestion.class);
 
             validator.validate(answer);
 
-        } catch (NonTransientAiException e) {
+        } catch (NonTransientAiException | ResourceAccessException e) {
             throw new AIUnavailableException("AI service unavailable", e);
         } catch (TransientAiException e) {
             throw new AIResponseException("AI service returned transient error", e);
@@ -101,22 +146,16 @@ public class QueryService {
             throw new AIResponseException("AI returned bad response", e);
         }
 
-        /*
-            Although the LLM is perfectly capable of querying the Song Service by itself,
-            we protect ourselves against hallucinations by reading only the identifiers of songs,
-            and fetching all song data (including long CDN urls) ourselves.
-         */
-        return answer.items().stream()
-                .map(rawSuggestion -> {
-                    Song song = songService
-                            .getSongsFromIdentifier(rawSuggestion.identifier())
-                            .stream()
-                            .findFirst()
-                            .orElseThrow(() -> new AIHallucinationException("AI responded with a song that doesn't exist"));
-                    return new Suggestion(song, prompt, rawSuggestion.reason());
-                })
-                .collect(Collectors.toList());
+        return answer;
 
+    }
+
+    private Song tryGetSongFromSuggestion(QuerySuggestion suggestion) throws AIHallucinationException {
+        return songService
+                .getSongsFromIdentifier(suggestion.identifier())
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new AIHallucinationException("AI responded with a song that doesn't exist"));
     }
 
 }
