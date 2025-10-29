@@ -1,6 +1,10 @@
 package io.github.stu2301681017.MyooosicAPI;
 
 import io.github.stu2301681017.MyooosicAPI.app.ai.AIUnavailableException;
+import io.github.stu2301681017.MyooosicAPI.app.auth.NotLoggedInException;
+import io.github.stu2301681017.MyooosicAPI.app.auth.UserNotFoundException;
+import io.github.stu2301681017.MyooosicAPI.app.auth.UsernameTakenException;
+import io.github.stu2301681017.MyooosicAPI.app.auth.WrongPasswordException;
 import io.github.stu2301681017.MyooosicAPI.core.*;
 import io.github.stu2301681017.MyooosicAPI.app.ai.AIResponseException;
 import jakarta.validation.ConstraintViolation;
@@ -70,6 +74,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAIResponseException(AIResponseException ex) {
         logger.error("Error:", ex);
         return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Bad AI response");
+    }
+
+    @ExceptionHandler(WrongPasswordException.class)
+    public ResponseEntity<ApiResponse<Void>> handleWrongPasswordException(WrongPasswordException ex) {
+        return createExceptionResponse(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(UserNotFoundException ex) {
+        return createExceptionResponse(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    @ExceptionHandler(UsernameTakenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUsernameTakenException(UsernameTakenException ex) {
+        return createExceptionResponse(HttpStatus.CONFLICT, "Username is taken");
+    }
+
+    @ExceptionHandler(NotLoggedInException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotLoggedInException(NotLoggedInException ex) {
+        return createExceptionResponse(HttpStatus.UNAUTHORIZED, "You are not logged in");
     }
 
     private ResponseEntity<ApiResponse<Void>> createExceptionResponse(HttpStatus status, String error) {
