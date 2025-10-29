@@ -49,4 +49,16 @@ public class AuthAPI {
                 "Successfully logged out");
     }
 
+    @GetMapping("/whoami")
+    public ApiResponse<String> whoAmI() {
+        String userId = null;
+        try {
+            userId = authService.getLoggedUserId();
+        } catch (NotLoggedInException ignored) {}
+        return new ApiResponse<>(
+                userId,
+                HttpStatus.OK,
+                userId != null ? "You are logged in." : "You are not logged in.");
+    }
+
 }

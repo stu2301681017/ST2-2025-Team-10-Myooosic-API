@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,6 +29,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericRuntimeException(RuntimeException ex) {
         return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unknown server error");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
+        return createExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unknown server error");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException ex) {
+        return createExceptionResponse(HttpStatus.METHOD_NOT_ALLOWED, "'"+ex.getMethod()+"' is not allowed on this url");
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

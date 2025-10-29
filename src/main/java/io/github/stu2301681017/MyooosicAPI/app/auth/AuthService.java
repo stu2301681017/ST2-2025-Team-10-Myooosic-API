@@ -69,7 +69,7 @@ public class AuthService {
         session.invalidate();
     }
 
-    public String getLoggedUserId() {
+     String getLoggedUserId() throws NotLoggedInException {
         Object userId = session.getAttribute("userId");
         if (userId == null) {
             throw new NotLoggedInException("User is not logged in");
