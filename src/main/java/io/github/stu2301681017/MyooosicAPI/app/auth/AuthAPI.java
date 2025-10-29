@@ -18,7 +18,7 @@ public class AuthAPI {
         this.authService = authService;
     }
 
-    @PostMapping("/login")
+    @PostMapping("/register")
     public ApiResponse<Void> register(
             @RequestBody @Valid RegisterRequest request
     ) {
@@ -29,7 +29,7 @@ public class AuthAPI {
                 "Successfully registered");
     }
 
-    @PostMapping("/register")
+    @PostMapping("/login")
     public ApiResponse<Void> login(
             @RequestBody @Valid LoginRequest request
     ) {
@@ -46,7 +46,7 @@ public class AuthAPI {
         return new ApiResponse<>(
                 null,
                 HttpStatus.OK,
-                "Successfully logged in");
+                "Successfully logged out");
     }
 
 }

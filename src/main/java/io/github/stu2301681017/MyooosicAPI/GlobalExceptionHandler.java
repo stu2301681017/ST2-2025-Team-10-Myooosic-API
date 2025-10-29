@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -57,7 +58,20 @@ public class GlobalExceptionHandler {
                     .stream()
                     .map(cv -> cv.getPropertyPath() + " " + cv.getMessage())
                     .collect(Collectors.joining(", "));
+        System.out.println(message);
             return createExceptionResponse(HttpStatus.BAD_REQUEST, "Invalid parameters: " + message);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
+        // Collect all field errors into a single message
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(fe -> fe.getField() + " " + fe.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+
+        return createExceptionResponse(HttpStatus.BAD_REQUEST, "Invalid parameters: " + message);
     }
 
     @ExceptionHandler(ServiceUnavailableException.class)
