@@ -17,7 +17,6 @@
         author varchar(255) not null,
         reason varchar(128),
         prompt_id integer,
-        primary key (name, author)
     ) engine=InnoDB;
 
     alter table query_prompt_entity 
