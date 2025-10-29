@@ -72,6 +72,7 @@ public class QueryService {
                             SuggestionEntity suggestionEntity = new SuggestionEntity();
                             suggestionEntity.setSongId(suggestion.identifier());
                             suggestionEntity.setReason(suggestion.reason());
+                            suggestionEntity.setPrompt(entity);
                             return suggestionEntity;
                         })
                         .collect(Collectors.toList())
