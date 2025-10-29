@@ -114,7 +114,7 @@ public class QueryService {
                     .tools(new SongTools(this.songService))
                     .user(u -> u
                             .text("""
-                      Think of a song that fits the following keywords and a small (<=128 characters) reason why:
+                      Think of a song that fits the following keywords and a small (<=128 characters) but elaborate and free-text reason why:
                       {keywords}
                       
                       {creativityPrompt}

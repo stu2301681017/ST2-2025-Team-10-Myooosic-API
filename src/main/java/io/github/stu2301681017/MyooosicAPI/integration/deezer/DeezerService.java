@@ -48,6 +48,7 @@ public class DeezerService implements SongService {
                             new SongIdentifier(track.title(), track.artist().name()),
                             Integer.valueOf(track.duration()),
                             track.link(),
+                            track.album().cover_xl(),
                             track.preview()
                     ))
                     .toList();

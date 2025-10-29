@@ -11,6 +11,7 @@ public record Song(
         @NotNull @JsonIgnore SongIdentifier id,
         @Positive Integer length, // in seconds
         @NotBlank @URL String url,
+        @NotBlank @URL String picture,
         @NotBlank @URL String previewUrl
 ) {
     @JsonProperty
