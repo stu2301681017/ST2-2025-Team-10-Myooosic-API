@@ -1,10 +1,8 @@
 package io.github.stu2301681017.MyooosicAPI.app.query;
+import io.github.stu2301681017.MyooosicAPI.app.song.SongIdentifier;
 import io.github.stu2301681017.MyooosicAPI.core.ApiConstraints;
 import io.github.stu2301681017.MyooosicAPI.core.ApiResponse;
-import io.github.stu2301681017.MyooosicAPI.core.SongIdentifier;
-import io.github.stu2301681017.MyooosicAPI.core.Suggestion;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;

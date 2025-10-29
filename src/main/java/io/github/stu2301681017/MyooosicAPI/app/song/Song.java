@@ -1,4 +1,4 @@
-package io.github.stu2301681017.MyooosicAPI.core;
+package io.github.stu2301681017.MyooosicAPI.app.song;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;

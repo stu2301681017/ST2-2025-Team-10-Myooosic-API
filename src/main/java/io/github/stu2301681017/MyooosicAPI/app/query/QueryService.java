@@ -1,11 +1,10 @@
 package io.github.stu2301681017.MyooosicAPI.app.query;
 
 import io.github.stu2301681017.MyooosicAPI.app.ai.*;
+import io.github.stu2301681017.MyooosicAPI.app.song.Song;
+import io.github.stu2301681017.MyooosicAPI.app.song.SongIdentifier;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongService;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongTools;
-import io.github.stu2301681017.MyooosicAPI.core.Song;
-import io.github.stu2301681017.MyooosicAPI.core.SongIdentifier;
-import io.github.stu2301681017.MyooosicAPI.core.Suggestion;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotNull;
@@ -13,8 +12,6 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ChatModelCallAdvisor;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;

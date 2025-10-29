@@ -1,12 +1,8 @@
 package io.github.stu2301681017.MyooosicAPI.app.song;
 
-import io.github.stu2301681017.MyooosicAPI.core.Song;
-import io.github.stu2301681017.MyooosicAPI.core.SongIdentifier;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
-
-import java.util.Collection;
 
 @Component
 public class SongTools {
