@@ -1,6 +1,9 @@
 package io.github.stu2301681017.MyooosicAPI.app.query;
 
 import io.github.stu2301681017.MyooosicAPI.app.ai.*;
+import io.github.stu2301681017.MyooosicAPI.app.auth.AuthService;
+import io.github.stu2301681017.MyooosicAPI.app.auth.NotLoggedInException;
+import io.github.stu2301681017.MyooosicAPI.app.query.persistence.*;
 import io.github.stu2301681017.MyooosicAPI.app.song.Song;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongIdentifier;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongService;
@@ -15,6 +18,7 @@ import org.springframework.ai.chat.client.advisor.ChatModelCallAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 
@@ -29,12 +33,16 @@ public class QueryService {
     private final SongService songService;
     private final Validator validator;
     private final Logger logger;
+    private final AuthService auth;
+    private final QueryRepository repo;
 
     public QueryService(
             ChatClient.Builder chatBuilder,
             ChatModel model,
             SongService songService,
-            Validator validator
+            Validator validator,
+            AuthService auth,
+            QueryRepository repo
     ) {
         this.chat = chatBuilder
             .defaultAdvisors(
@@ -47,15 +55,68 @@ public class QueryService {
         this.songService = songService;
         this.validator = validator;
         this.logger = Logger.getGlobal();
+        this.auth = auth;
+        this.repo = repo;
     }
 
-    public Collection<Suggestion> getSongSuggestionsForPrompt(@Valid @NotNull QueryPrompt prompt, @Positive int amount, List<SongIdentifier> avoid) {
+    public void saveQuery(@Valid @NotNull io.github.stu2301681017.MyooosicAPI.app.query.persistence.QueryPayload payload) {
 
-        List<Suggestion> suggestions = new ArrayList<>();
+        if (!auth.isLoggedIn()) { throw new NotLoggedInException("User must be logged in to save queries"); }
+
+        QueryPromptEntity entity = new QueryPromptEntity();
+        entity.setPrompt(payload.prompt().query());
+        entity.setSuggestions(
+                payload.suggestions()
+                        .stream()
+                        .map(suggestion -> {
+                            SuggestionEntity suggestionEntity = new SuggestionEntity();
+                            suggestionEntity.setSongId(suggestion.identifier());
+                            suggestionEntity.setReason(suggestion.reason());
+                            return suggestionEntity;
+                        })
+                        .collect(Collectors.toList())
+        );
+        entity.setOwner(auth.getLoggedRegistration());
+
+        repo.save(entity);
+
+    }
+
+    public Collection<QueryDTO> getSavedQueries() {
+
+        if (!auth.isLoggedIn()) { throw new NotLoggedInException("User must be logged in to load queries"); }
+
+        return repo.findByOwner_Name(auth.getLoggedUserId())
+                .stream()
+                .map(prompt ->
+                        new QueryDTO(
+                            new QueryPayload(prompt.getPrompt()),
+                            prompt.getSuggestions()
+                                .stream()
+                                .map(suggestion ->
+                                        new SuggestionDTO(
+                                            songService.getSongsFromIdentifier(suggestion.getSongId())
+                                                .stream()
+                                                .findFirst()
+                                                .orElseThrow(() -> new DataIntegrityViolationException("Could not find song from saved query")),
+                                            prompt.getPrompt(),
+                                            suggestion.getReason()
+                                        )
+                                )
+                                .collect(Collectors.toList())
+                        )
+                )
+                .collect(Collectors.toList());
+
+    }
+
+    public Collection<SuggestionDTO> getSongSuggestionsForPrompt(@Valid @NotNull QueryPayload prompt, @Positive int amount, List<SongIdentifier> avoid) {
+
+        List<SuggestionDTO> suggestions = new ArrayList<>();
         List<SongIdentifier> avoidAndAlreadyTaken = new ArrayList<>(avoid);
 
         for (int i = 0; i < amount; i++) {
-            Suggestion suggestion = suggest(prompt, avoidAndAlreadyTaken, 0);
+            SuggestionDTO suggestion = suggest(prompt, avoidAndAlreadyTaken, 0);
             if (suggestion != null) {
                 avoidAndAlreadyTaken.add(suggestion.song().id());
             }
@@ -65,7 +126,7 @@ public class QueryService {
         return suggestions;
     }
 
-    private Suggestion suggest(@Valid @NotNull QueryPrompt prompt, List<SongIdentifier> avoid, @PositiveOrZero int tries) {
+    private SuggestionDTO suggest(@Valid @NotNull QueryPayload prompt, List<SongIdentifier> avoid, @PositiveOrZero int tries) {
 
         String failedSuggestionsAsString = avoid
                 .stream()
@@ -73,11 +134,11 @@ public class QueryService {
                 .collect(Collectors.joining("; "));
         Logger.getGlobal().info("Trying a new suggestion for prompt '" + prompt.query() + "'. Try " + tries + ". Avoiding suggestions: " + failedSuggestionsAsString);
 
-        QuerySuggestion suggestionAttempt = suggestionRun(prompt, avoid);
+        SuggestionPayload suggestionAttempt = suggestionRun(prompt, avoid);
         try {
             Song suggestedSong = tryGetSongFromSuggestion(suggestionAttempt);
             Logger.getGlobal().info("Found a song with name " + suggestionAttempt.identifier().name() + " by author " + suggestionAttempt.identifier().author() + ", returning.");
-            return new Suggestion(suggestedSong, prompt, suggestionAttempt.reason());
+            return new SuggestionDTO(suggestedSong, prompt.query(), suggestionAttempt.reason());
         } catch (AIHallucinationException e) {
             Logger.getGlobal().info("Could not find a song with name " + suggestionAttempt.identifier().name() + " by author " + suggestionAttempt.identifier().author() + ".");
             if (tries > 5) {
@@ -89,8 +150,8 @@ public class QueryService {
         }
     }
 
-    private QuerySuggestion suggestionRun(@Valid @NotNull QueryPrompt prompt, List<SongIdentifier> failedSuggestions) {
-        QuerySuggestion answer;
+    private SuggestionPayload suggestionRun(@Valid @NotNull QueryPayload prompt, List<SongIdentifier> failedSuggestions) {
+        SuggestionPayload answer;
 
         String[] creativityPrompts = {
                 "Think outside the box and be creative.",
@@ -131,7 +192,7 @@ public class QueryService {
                             .param("creativityPrompt", creativityPrompt)
                     )
                     .call()
-                    .entity(QuerySuggestion.class);
+                    .entity(SuggestionPayload.class);
 
             validator.validate(answer);
 
@@ -147,7 +208,7 @@ public class QueryService {
 
     }
 
-    private Song tryGetSongFromSuggestion(QuerySuggestion suggestion) throws AIHallucinationException {
+    private Song tryGetSongFromSuggestion(SuggestionPayload suggestion) throws AIHallucinationException {
         return songService
                 .getSongsFromIdentifier(suggestion.identifier())
                 .stream()

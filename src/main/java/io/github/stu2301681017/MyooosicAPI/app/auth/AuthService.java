@@ -69,12 +69,20 @@ public class AuthService {
         session.invalidate();
     }
 
-     String getLoggedUserId() throws NotLoggedInException {
+    public boolean isLoggedIn() {
+        return session.getAttribute("userId") != null;
+    }
+
+     public String getLoggedUserId() throws NotLoggedInException {
         Object userId = session.getAttribute("userId");
         if (userId == null) {
             throw new NotLoggedInException("User is not logged in");
         }
         return userId.toString();
+    }
+
+    public Registration getLoggedRegistration() throws NotLoggedInException {
+        return registrationRepository.findByName(getLoggedUserId());
     }
 
     private boolean verify(String secret, byte[] hash, byte[] salt) {

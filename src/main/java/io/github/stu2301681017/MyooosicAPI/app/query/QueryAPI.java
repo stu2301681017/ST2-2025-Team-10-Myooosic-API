@@ -1,4 +1,5 @@
 package io.github.stu2301681017.MyooosicAPI.app.query;
+import io.github.stu2301681017.MyooosicAPI.app.query.persistence.QueryDTO;
 import io.github.stu2301681017.MyooosicAPI.app.song.SongIdentifier;
 import io.github.stu2301681017.MyooosicAPI.core.ApiConstraints;
 import io.github.stu2301681017.MyooosicAPI.core.ApiResponse;
@@ -24,8 +25,8 @@ public class QueryAPI {
     }
 
     @GetMapping("/query/{prompt}")
-    public ApiResponse<Collection<Suggestion>> query(
-            @PathVariable @Valid QueryPrompt prompt,
+    public ApiResponse<Collection<SuggestionDTO>> query(
+            @PathVariable @Valid QueryPayload prompt,
             @RequestParam(required = false) @Valid @Size(max = 20) List<SongIdentifier> avoid
     ) {
         return new ApiResponse<>(
@@ -39,11 +40,11 @@ public class QueryAPI {
     }
 
     @GetMapping("/query/single/{prompt}")
-    public ApiResponse<Suggestion> querySingle(
-            @PathVariable @Valid QueryPrompt prompt,
+    public ApiResponse<SuggestionDTO> querySingle(
+            @PathVariable @Valid QueryPayload prompt,
             @RequestParam(required = false) @Valid @Size(max = 20) List<SongIdentifier> avoid
     ) {
-        Optional<Suggestion> first = queryService.getSongSuggestionsForPrompt(
+        Optional<SuggestionDTO> first = queryService.getSongSuggestionsForPrompt(
                 prompt,
                 1,
                 avoid != null ? avoid : List.of()
@@ -52,6 +53,28 @@ public class QueryAPI {
                 first.orElse(null),
                 HttpStatus.OK,
                 "Successfuly found 1 song suggestion"
+        );
+    }
+
+    @PostMapping("/query/save")
+    public ApiResponse<Void> saveQuery(
+            @RequestBody @Valid io.github.stu2301681017.MyooosicAPI.app.query.persistence.QueryPayload query
+    ) {
+        queryService.saveQuery(query);
+        return new ApiResponse<>(
+                null,
+                HttpStatus.OK,
+                "Successfully saved query"
+        );
+    }
+
+    @GetMapping("/query/save")
+    public ApiResponse<Collection<QueryDTO>> getSavedQueries(
+    ) {
+        return new ApiResponse<>(
+                queryService.getSavedQueries(),
+                HttpStatus.OK,
+                "Successfully found saved queries"
         );
     }
 
