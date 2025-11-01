@@ -14,6 +14,6 @@ This is a Spring Boot project. Build using Gradle:
 
 ### Used Patterns
 
-Spring DI
-DTOs
-DAOs (Through JPA)
+- Spring DI
+- DTOs
+- DAOs (Through JPA)
